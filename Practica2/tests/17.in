@@ -1,0 +1,2 @@
+./tests/p1.sh & ./tests/p2.sh &
+exit
