@@ -1,0 +1,1 @@
+../tester/run-tests.sh: línea 23: 47448 Violación de segmento  ./UVash tests/15.in

@@ -1,0 +1,3 @@
+ls: no se puede acceder a '>': No existe el fichero o el directorio
+ls: no se puede acceder a '/tmp/output11': No existe el fichero o el directorio
+cat: /tmp/output11: No existe el fichero o el directorio
