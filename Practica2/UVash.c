@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
             		
 			} else if (strcmp(token, "<") == 0) {  // Redirección de entrada
                 		input_file = strsep(&ptr, " ");
-			
+
 			} else if (token[0] != '\0') {
 				args[i++] = token;
 			}
