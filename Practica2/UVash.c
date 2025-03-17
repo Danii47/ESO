@@ -19,6 +19,7 @@ Command* get_commands(char* line, int* numberOfCommands, int* error) {
 
 
 	char *ptr = strdup(line);
+	char *aux = ptr;
 	*numberOfCommands = 0;
 	*error = 0;
 	char* token;
@@ -27,7 +28,7 @@ Command* get_commands(char* line, int* numberOfCommands, int* error) {
 		(*numberOfCommands)++;
 	}
 
-	free(ptr);
+	free(aux);
 	ptr = line;
 	Command* commands = (Command*) malloc(sizeof(Command) * (*numberOfCommands));
 	int commandNumber = 0;
@@ -100,12 +101,15 @@ int all_spaces(const char* line) {
 }
 
 int main(int argc, char* argv[]) {
+	char ERROR_MESSAGE[30] = "An error has occurred\n";
 	FILE* read_file = NULL;
 	char* line = NULL;
-	size_t size = 0;
+	size_t size;
+	pid_t pid;
+	pid_t* pids = NULL;
 
 	if (argc > 2) {
-		fprintf(stderr, "An error has occurred\n");
+		fprintf(stderr, "%s", ERROR_MESSAGE);
 		exit(1);
 	}
 
@@ -115,46 +119,56 @@ int main(int argc, char* argv[]) {
 		read_file = fopen(argv[1], "r");
 
 		if (read_file == NULL) {
-			fprintf(stderr, "An error has occurred\n");
+			fprintf(stderr, "%s", ERROR_MESSAGE);
 			exit(1);
 		}
 	}
 
-	if (argc != 2)
-		printf("UVash> ");
 	
 	int i = 0;
 	int error = 0;
 	Command* commands;
 	int numberOfCommands;
-	pid_t pid;
-	pid_t* pids;
+
+	
+	if (argc != 2)
+		printf("UVash> ");
 
 	while (getline(&line, &size, read_file) != EOF) {
 		line[strcspn(line, "\n")] = '\0';
 
-		if (all_spaces(line))
+		if (all_spaces(line)) {
+			free(line);
+			size = 0;
 			continue;
+		}
 
 		commands = get_commands(line, &numberOfCommands, &error);
 		pids = (pid_t*) malloc(sizeof(pid_t) * numberOfCommands);
 
 		for (i = 0; i < numberOfCommands; i++) {
 			if (error || commands[i].length == 0) {
-				fprintf(stderr, "An error has occurred\n");
+				fprintf(stderr, "%s", ERROR_MESSAGE);
+				free(line);
+				size = 0;
+				free(commands);
+				free(pids);
 				continue;
 			}
 
 
 			if (strcmp(commands[i].arguments[0], "exit") == 0) {
 				if (commands[i].length != 1) {
-					fprintf(stderr, "An error has occurred\n");
+					fprintf(stderr, "%s", ERROR_MESSAGE);
 				} else {
+					free(line);
+					free(commands);
+					free(pids);
 					exit(0);
 				}
 			} else if (strcmp(commands[i].arguments[0], "cd") == 0) {
 				if (commands[i].length != 2) {
-					fprintf(stderr, "An error has occurred\n");
+					fprintf(stderr, "%s", ERROR_MESSAGE);
 				} else if (chdir(commands[i].arguments[1]) != 0) {
 					perror("chdir failed");
 				}
@@ -163,12 +177,18 @@ int main(int argc, char* argv[]) {
 				
 				if (pid < 0) {
 					perror("fork");
-					return 1;
+					free(line);
+					free(commands);
+					free(pids);
+					exit(1);
 				} else if (pid == 0) {
 					if (commands[i].input_file) {
 						int fd_in = open(commands[i].input_file, O_RDONLY);
 						if (fd_in == -1) {
 						    perror("Error abriendo archivo de entrada");
+						    free(line);
+						    free(commands);
+						    free(pids);
 						    exit(1);
 						}
 						dup2(fd_in, STDIN_FILENO);
@@ -178,7 +198,10 @@ int main(int argc, char* argv[]) {
 					if (commands[i].output_file) {
 						int fd_out = open(commands[i].output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 						if (fd_out == -1) {
-						    perror("Error abriendo archivo de salida");
+						    perror("Error abriendo archivo de salida"); 
+						    free(line);
+						    free(commands);
+						    free(pids);
 						    exit(1);
 						}
 						dup2(fd_out, STDOUT_FILENO);
@@ -186,7 +209,11 @@ int main(int argc, char* argv[]) {
 					}
 					
 					execvp(commands[i].arguments[0], commands[i].arguments);
-					fprintf(stderr, "An error has occurred\n");
+					fprintf(stderr, "%s", ERROR_MESSAGE);
+
+					free(line);
+					free(commands);
+					free(pids);
 					exit(1);
 				} else {
 					pids[i] = pid;
